@@ -11,7 +11,13 @@ def main():
     if st.button("送出"):
         if user_input:
             #use ollama to get recommendation
-            response = ollama.chat(model = 'llama3', messages = [{'role': 'user', 'content': user_input}])
+            response = ollama.chat(
+                model = 'llama3', 
+                messages=[
+                    {"role": "system", "content": "你是一個商品推薦助手，幫助用戶找到符合需求的商品，並計算大概需要花多少錢。"},
+                    {"role": "user", "content": user_input}
+                ]
+            )
 
             #show response
             st.text("推薦商品:")
