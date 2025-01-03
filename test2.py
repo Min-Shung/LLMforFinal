@@ -1,66 +1,69 @@
 import streamlit as st
 import ollama
-import json
+import speech_recognition as sr
+from gtts import gTTS
+import tempfile
 
-# 商品資料庫
-products = [
-    {"category": "手機", "name": "iPhone 14", "price": 799, "features": ["128GB", "5G", "OLED 屏幕"]},
-    {"category": "手機", "name": "Samsung Galaxy S22", "price": 699, "features": ["128GB", "5G", "AMOLED 屏幕"]},
-    {"category": "筆電", "name": "MacBook Air", "price": 999, "features": ["M2", "256GB", "Retina 屏幕"]}
-]
+def main():
+    st.title("推薦購物")
 
-# 根據需求推薦商品
-def recommend_products(category, budget, feature=None):
-    return [
-        product for product in products
-        if product["category"] == category and product["price"] <= budget and (feature in product["features"] if feature else True)
-    ]
+    # Initialize speech recognizer
+    recognizer = sr.Recognizer()
 
-# 與 Ollama 聯動的主程式
-def chatbot():
-    print("歡迎使用商品推薦機器人！")
-    user_input = input("請輸入您的需求：")
+    # Initialize input and response states
+    if "user_input" not in st.session_state:
+        st.session_state["user_input"] = ""
+    if "response_text" not in st.session_state:
+        st.session_state["response_text"] = ""
 
-    # 向 Ollama 發送請求
-    response = ollama.chat(
-        model="llama3",
-        messages=[
-            {"role": "system", "content": "你是一個商品推薦助手，幫助用戶找到符合需求的商品。"},
-            {"role": "user", "content": user_input}
-        ]
-    )
+    # User input text area
+    user_input = st.text_area("您有什麼需求", st.session_state["user_input"])
 
-    # 解析 Ollama 回應
-    response_text = response["content"]
-    print(f"Ollama 回應: {response_text}")
+    # Voice input button
+    if st.button("語音輸入"):
+        with sr.Microphone() as source:
+            st.info("請開始說話...")
+            try:
+                audio = recognizer.listen(source, timeout=5)
+                recognized_text = recognizer.recognize_google(audio, language="zh-TW")
+                st.success(f"語音識別成功: {recognized_text}")
+                st.session_state["user_input"] = recognized_text  # Update input box content
+            except sr.UnknownValueError:
+                st.error("無法識別語音，請再試一次。")
+            except sr.RequestError:
+                st.error("語音服務出現問題，請檢查網路連線。")
+            except Exception as e:
+                st.error(f"發生錯誤: {e}")
 
-    # 模擬需求解析（實際應由模型返回結構化數據）
-    # 範例格式: {"category": "手機", "budget": 500, "feature": "128GB"}
-    try:
-        extracted_data = json.loads(response_text)
-    except json.JSONDecodeError:
-        print("無法解析需求，請重新輸入具體需求！")
-        return
+    # Submit button
+    if st.button("送出"):
+        if st.session_state["user_input"]:
+            # Use Ollama to generate recommendations
+            response = ollama.chat(
+                model='llama3',
+                messages=[
+                    {"role": "system", "content": "你是一個商品推薦助手，幫助用戶找到符合需求的商品，並計算大概需要花多少錢。"},
+                    {"role": "user", "content": st.session_state["user_input"]}
+                ]
+            )
+            st.session_state["response_text"] = response['message']['content']
+        else:
+            st.warning("請輸入需求!")
 
-    category = extracted_data.get("category")
-    budget = extracted_data.get("budget")
-    feature = extracted_data.get("feature")
+    # Display recommended products
+    if st.session_state["response_text"]:
+        st.text("推薦商品:")
+        st.write(st.session_state["response_text"])
 
-    # 商品推薦
-    recommendations = recommend_products(category, budget, feature)
-    if not recommendations:
-        print("抱歉，沒有找到符合您需求的商品。")
-        return
-
-    print("以下是推薦的商品：")
-    prices = []
-    for product in recommendations:
-        print(f"{product['name']} - ${product['price']} ({', '.join(product['features'])})")
-        prices.append(product["price"])
-
-    # 計算金額
-    total = sum(prices)
-    print(f"推薦商品的總金額約為：${total}")
+    # Play response button
+    if st.session_state["response_text"] and st.button("播放回答"):
+        try:
+            tts = gTTS(text=st.session_state["response_text"], lang="zh-TW")
+            temp_audio = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3")
+            tts.save(temp_audio.name)
+            st.audio(temp_audio.name, format="audio/mp3")
+        except Exception as e:
+            st.error(f"無法生成語音: {e}")
 
 if __name__ == "__main__":
-    chatbot()
+    main()
