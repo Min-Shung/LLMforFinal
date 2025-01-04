@@ -12,16 +12,16 @@ def main():
     recognizer = sr.Recognizer()
 
     # 初始化輸入框的狀態
-    if "user_input" not in st.session_state:
-        st.session_state["user_input"] = ""
-    if "response_text" not in st.session_state:
-        st.session_state["response_text"] = ""
+    st.session_state["user_input"] = ""
+    st.session_state["response_text"] = ""
 
     #用戶輸入框
     user_input = st.text_area("您有什麼需求", st.session_state["user_input"])
 
     # 語音輸入按鈕
     if st.button("語音輸入"):
+        st.session_state["user_input"] = ""
+        st.session_state["response_text"] = ""
         with sr.Microphone() as source:
             st.info("請開始說話...")
             try:
@@ -42,7 +42,7 @@ def main():
         if user_input:
             #use ollama to get recommendation
             response = ollama.chat(
-                model = 'llama3', 
+                model = 'taide_model', 
                 messages=[
                     {"role": "system", "content": "你是一個商品推薦助手，幫助用戶找到符合需求的商品，並計算大概需要花多少錢。"},
                     {"role": "user", "content": user_input}
