@@ -83,6 +83,9 @@ def handle_voice_input():
             st.error(f"發生錯誤: {e}")
     return ""
 
+import pyttsx3
+import tempfile
+
 def text_to_speech(response_text):
     try:
         # 使用 gTTS 生成語音並設置語言為繁體中文
@@ -97,44 +100,54 @@ def text_to_speech(response_text):
     except Exception as e:
         st.error(f"無法生成語音: {e}")
         return None
-
 def main():
     st.title("推薦購物系統")
 
-    # 初始化
+    # 初始化 Session 狀態
     if "user_input" not in st.session_state:
         st.session_state["user_input"] = ""
     if "response_text" not in st.session_state:
         st.session_state["response_text"] = ""
     if "chat_history" not in st.session_state:
         st.session_state["chat_history"] = [
-            {"role": "system", "content": "你是一個協助別人尋找想要的用品的機器人，請用繁體中文回答問題，如果有輸入價格期許，請回答符合價格需求的商品，商品必須是實際存在且可行的，你必須回答1到3個不同類型、面向、用途的商品，並總結大概需要花費的台幣"}
+            {"role": "system", "content": "你是一個依照需求給出建議購買產品的機器人，請用繁體中文回答問題。商品必須是實際存在且可行的，你必須回答1到3個不同類型、面向、用途的商品，並總結大概需要花費的台幣。"}
         ]
 
+    # 初始化資料庫和嵌入模型
     db, embeddings_model = initialize_text_processing()
 
-    # 使用者輸入
-    user_input = st.text_area("請輸入需求", value=st.session_state["user_input"], key="text_input")
-    if st.button("語音輸入"):
-        st.session_state["user_input"] = handle_voice_input()
+    # 使用者文字輸入框
+    user_input = st.text_area("請輸入需求", value=st.session_state.get("user_input", ""), key="text_input")
 
+    # 語音輸入按鈕
+    if st.button("語音輸入"):
+        recognized_text = handle_voice_input()
+        if recognized_text:
+            st.session_state["user_input"] = recognized_text
+
+    # 送出按鈕
     if st.button("送出"):
-        query = st.session_state["user_input"].strip()
+        st.session_state["user_input"] = user_input.strip()
+        query = st.session_state["user_input"].strip()  # 確保輸入內容去除多餘空格
         if query:
+            # 執行推薦邏輯
             response = recommend_product_multiround(db, embeddings_model, st.session_state["chat_history"], query)
             st.session_state["response_text"] = response
+
+            # 顯示推薦結果
             st.text("推薦商品:")
             st.write(response)
 
-            # 生成和播放語音
+            # 生成語音
             audio_file = text_to_speech(st.session_state["response_text"])
             if audio_file:
                 st.audio(audio_file, format="audio/mp3")
 
-            # 清除輸入
+            # 清空輸入框內容
             st.session_state["user_input"] = ""
         else:
-            st.warning("請輸入需求!")
+            st.warning("請輸入需求或使用語音輸入!")
+    st.write(f"目前的輸入值: {st.session_state['user_input']}")
 
 if __name__ == "__main__":
     main()
