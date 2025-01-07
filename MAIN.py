@@ -108,7 +108,7 @@ def main():
         st.session_state["response_text"] = ""
     if "chat_history" not in st.session_state:
         st.session_state["chat_history"] = [
-            {"role": "system", "content": "你是一個協助別人尋找想要的用品的機器人，請用繁體中文回答問題，如果有輸入價格期許，請回答符合價格需求的商品，商品必須是實際存在且可行的，你必須回答1到3個不同類型、面向、用途的商品，並總結大概需要花費的台幣"}
+            {"role": "system", "content": "你是一個依照需求給豬建議產品的機器人，請用繁體中文回答問題。商品必須是實際存在且可行的，你必須回答1到3個不同類型、面向、用途的商品，並總結大概需要花費的台幣"}
         ]
 
     db, embeddings_model = initialize_text_processing()
